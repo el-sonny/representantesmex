@@ -46,10 +46,42 @@ module.exports = {
 			if(e) throw e;
 			scrapeSingleDiputado(d[0],function(e,d){
 				if(e) console.log(e);
-				res.send(d);
+				res.json(d);
 			});
 		});
 	},
+	comisiones : function(req,res){
+		scraperRequires();
+		var tipo_id = req.param('id');
+		request.get({
+			uri: 'http://sitl.diputados.gob.mx/LXII_leg/listado_de_comisioneslxii.php?tct='+tipo_id,
+			encoding: null
+		},function(err, resp, body){
+			if (err) throw err;
+			body = iconv.decode(body, 'iso-8859-1');
+			var $ = cheerio.load(body);
+			var name = $('.EncabezadoVerde').text().replace('Listado de ','').trim();
+			Tipo_de_comision.findOrCreate({id:tipo_id},{id:tipo_id,nombre:name}).exec(function(e,t){
+				if(e) throw(e); 
+				$("a[href*='integrantes_de_comisionlxii']").each(function(){
+					var comision = {
+						id : $(this).attr('href').replace('integrantes_de_comisionlxii.php?comt=',''),
+						name : $(this).text().trim(),
+						ubicacion : $(this).parent().next().text(),
+						extension : $(this).parent().next().next().text(),
+						micrositio : $(this).parent().next().next().next().children('a').attr('href'),
+						tipo: t.id
+					};
+					console.log(comision);
+					Comision.update(comision.id,comision,function(e,c){
+						if(e) throw (e);
+						res.json(c);
+					});
+				});
+
+			});
+		});
+	}
 
 };
 function scraperRequires(){
@@ -100,7 +132,7 @@ function scrapeSingleDiputado(diputado,callback){
 	});
 }
 var saveDiputado = function(e,d){
-	if(e) throw (e);
+	if(e) console.log (e);
 	numSaved++;
 	console.log(numSaved+' diputados procesados');
 }
