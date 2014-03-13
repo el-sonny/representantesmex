@@ -27,6 +27,24 @@ module.exports.connections = {
   localDiskDb: {
     adapter: 'sails-disk'
   },
+    mongo: {
+      adapter   : 'sails-mongo',
+      host      : 'localhost',
+      port      : 27017,
+      user      : '',
+      password  : '',
+      database  : 'diputados'
+    },
+
+  // mongo: {
+  //   adapter   : 'sails-mongo',
+  //   host      : 'localhost',
+  //   port      : 27017,
+  //   user      : 'username',
+  //   password  : 'password',
+  //   database  : 'diputados'
+  // },
+
 
   // MySQL is the world's most popular relational database.
   // http://en.wikipedia.org/wiki/MySQL
@@ -48,14 +66,6 @@ module.exports.connections = {
   // Run:
   // npm install sails-mongo
   //
-  someMongodbServer: {
-    adapter   : 'sails-mongo',
-    host      : 'localhost',
-    port      : 27017,
-    user      : 'username',
-    password  : 'password',
-    database  : 'your mongo db name here'
-  },
 
   // PostgreSQL is another officially supported relational database. 
   // http://en.wikipedia.org/wiki/PostgreSQL

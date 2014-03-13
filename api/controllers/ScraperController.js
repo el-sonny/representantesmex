@@ -6,6 +6,7 @@
  */
 
 module.exports = {
+	//Escrapea por fraccion parlamentara pasada por GET como id los ids de partidos son = {1,2,3,4,5,6,12}
 	diputados: function(req, res) {
 		scraperRequires();
 		var partido = req.param('id');
@@ -32,15 +33,21 @@ module.exports = {
 			});
 		});
 	},
-	allCurriculums : function(req,res){
+	curricula : function(req,res){
 		scraperRequires();
 		Diputado.find({}).done(function(err, diputados){
 			if(err) throw err;
 			numSaved = 0;
-			diputados.forEach(function(diputado){scrapeSingleDiputado(diputado,saveDiputado)});
+			diputados.forEach(function(diputado){
+					scrapeSingleDiputado(diputado,function(e,d){
+						if(e) console.log (e);
+						numSaved++;
+						if(numSaved%10 == 0) console.log(numSaved+' diputados procesados');
+					});
+			});
 		});
 	},
-	singleCurriculum : function(req,res){
+	curriculum : function(req,res){
 		scraperRequires();
 		Diputado.find(req.param('id'),function(e,d){
 			if(e) throw e;
@@ -124,15 +131,14 @@ function scrapeSingleDiputado(diputado,callback){
 			var id = $(this).attr('href').replace('integrantes_de_comisionlxii.php?comt=','');
 			var name = $(this).text().replace(/\(.*\)/i,'').trim();
 			Comision.findOrCreate({id:id},{id:id,nombre:name}).exec(function(e,c){
-				if(e) throw e;
-				diputado.comisiones.add(c.id);
+				if(e){ 
+					console.log('comision error',id,name);
+					//throw e;
+				}else{
+					diputado.comisiones.add(c.id);
+				}
 			});
 		});	
 		diputado.save(callback);
 	});
-}
-var saveDiputado = function(e,d){
-	if(e) console.log (e);
-	numSaved++;
-	console.log(numSaved+' diputados procesados');
 }
