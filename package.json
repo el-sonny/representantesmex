@@ -5,8 +5,8 @@
   "description": "a Sails application",
   "keywords": [],
   "dependencies": {
-    "sails": "~0.10.0-rc4",
-    "sails-disk": "~0.10.0",
+    "sails": "^0.10.0-rc4",
+    "sails-disk": "^0.10.0-rc3",
     "rc": "~0.3.3",
     "include-all": "~0.1.3",
     "ejs": "~0.8.4",
@@ -22,7 +22,10 @@
     "grunt-contrib-cssmin": "~0.6.1",
     "grunt-contrib-less": "~0.9.0",
     "grunt-contrib-coffee": "~0.7.0",
-    "sails-mongo": "^0.10.0-rc1"
+    "sails-mongo": "^0.10.0-rc1",
+    "cheerio": "^0.13.1",
+    "request": "^2.34.0",
+    "iconv-lite": "^0.2.11"
   },
   "scripts": {
     "start": "node app.js",
