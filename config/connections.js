@@ -33,7 +33,7 @@ module.exports.connections = {
       port      : 27017,
       user      : '',
       password  : '',
-      database  : 'diputados'
+      database  : 'diputados2'
     },
 
   // mongo: {

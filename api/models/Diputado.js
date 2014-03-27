@@ -11,7 +11,6 @@ module.exports = {
 		comisiones: {
 			collection: 'comision',
 			via: 'diputados',
-			dominant : true
 		}
 	},
 	

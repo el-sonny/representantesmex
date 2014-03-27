@@ -11,7 +11,7 @@ module.exports = {
 		diputados:{
 			collection: 'diputado',
 			via: 'comisiones',
-			dominant:'true'
+			dominant : true
 		},
 		tipo:{
             model:'tipo_de_comision'

@@ -6,7 +6,20 @@
  */
 
 module.exports = {
-	//Escrapea por fraccion parlamentara pasada por GET como id los ids de partidos son = {1,2,3,4,5,6,12}
+	test: function(req,res){
+		Diputado.find(req.param('id')).populate('comisiones').exec(function(e,d){
+			if(e) throw(e);
+			d = d[0];
+			d.comisiones.add("11");
+			d.save(function(e,d){
+				if(e) console.log(e);
+				console.log(d);
+				res.json(d);
+				return;
+			});
+		});
+	},
+	//Escrapea por fraccion parlamentaria pasada por GET como id los ids de partidos son = {1,2,3,4,5,6,12}
 	diputados: function(req, res) {
 		scraperRequires();
 		var partido = req.param('id');
@@ -35,28 +48,33 @@ module.exports = {
 	},
 	curricula : function(req,res){
 		scraperRequires();
-		Diputado.find({}).done(function(err, diputados){
+		var first_record = req.param('id') * 20;
+		Diputado.find({limit:20,skip:first_record}).exec(function(err, diputados){
 			if(err) throw err;
 			numSaved = 0;
 			diputados.forEach(function(diputado){
-					scrapeSingleDiputado(diputado,function(e,d){
-						if(e) console.log (e);
-						numSaved++;
-						if(numSaved%10 == 0) console.log(numSaved+' diputados procesados');
-					});
+				scrapeSingleDiputado(diputado,function(e,d){
+					if(e) console.log (e);
+					numSaved++;
+					if(numSaved == diputados.length){
+						console.log(numSaved+' diputados procesados');
+						res.json(diputados);
+					}
+				});
 			});
 		});
 	},
 	curriculum : function(req,res){
 		scraperRequires();
-		Diputado.find(req.param('id'),function(e,d){
+		Diputado.findOne(req.param('id')).exec(function(e,d){
 			if(e) throw e;
-			scrapeSingleDiputado(d[0],function(e,d){
+			scrapeSingleDiputado(d,function(e,d){
 				if(e) console.log(e);
-				res.json(d);
-			});
+				//res.json(d);
+			},res);
 		});
 	},
+	// Escrapea por tipo de comision {1,2,3,4,6,7,8,10,12,13,16,18,21}
 	comisiones : function(req,res){
 		scraperRequires();
 		var tipo_id = req.param('id');
@@ -79,15 +97,25 @@ module.exports = {
 						micrositio : $(this).parent().next().next().next().children('a').attr('href'),
 						tipo: t.id
 					};
-					console.log(comision);
-					Comision.update(comision.id,comision,function(e,c){
-						if(e) throw (e);
-						res.json(c);
+					Comision.findOne(comision.id,function(e,c){
+						if(!c){
+							Comision.create(comision,function(e,c){
+								if(e) throw(e);
+								console.log('create',c);
+								return res.send();
+							})
+						}else{
+							c.update(comision.id,comision,function(e,c){
+								if(e) throw (e);
+								console.log('update',c);
+							});	
+						}
 					});
+					
 				});
-
 			});
 		});
+		res.send();
 	}
 
 };
@@ -96,15 +124,16 @@ function scraperRequires(){
 	request = require('request');
 	iconv = require('iconv-lite');
 }
-function scrapeSingleDiputado(diputado,callback){	
+function scrapeSingleDiputado(diputado,callback,res){	
 	request.get({
 		uri : 'http://sitl.diputados.gob.mx/LXII_leg/curricula.php?dipt='+diputado.id,
 		encoding : null, 
 	},function(err, resp, body){
-		if(err) throw err;
+		if(err) console.log(err);
 		body = iconv.decode(body, 'iso-8859-1');			
 		$ = cheerio.load(body);
 
+		//Datos Generales
 		var bodySummary = $('body').text().replace(/[\n|\t| ]+/gi,' ');
 		var dchelper = bodySummary.match(/(Distrito|Circunscripción): (.*) Cabecera:/i);
 		var suplente = bodySummary.match(/Suplente( de)?: (.*) Onomástico:/i);
@@ -127,18 +156,53 @@ function scrapeSingleDiputado(diputado,callback){
 		diputado.curul = bodySummary.match( /Curul: (.*?) (Suplente( de)?|Onomástico):/i)[1];
 		diputado.tipo_de_eleccion = bodySummary.match( /Tipo de elección: (.*) Entidad:/i)[1];
 		
+		//Comisiones
 		$("a[href*='integrantes_de_comisionlxii']").each(function(){
 			var id = $(this).attr('href').replace('integrantes_de_comisionlxii.php?comt=','');
 			var name = $(this).text().replace(/\(.*\)/i,'').trim();
-			Comision.findOrCreate({id:id},{id:id,nombre:name}).exec(function(e,c){
+			
+			Comision.findOrCreate({id:id},{id:id,nombre:name}).populate('diputados').exec(function(e,c){
 				if(e){ 
-					console.log('comision error',id,name);
-					//throw e;
+					console.log('comision error',id,name,diputado.id);
+					throw e;
 				}else{
-					diputado.comisiones.add(c.id);
+					c.diputados.add(diputado.id);
+					c.save();
 				}
 			});
 		});	
+
+		//Ridiculums
+		var removeDiacritics = require('diacritics').remove;
+		var concepto = false;
+		var curriculum = {};
+		$('body > tr:nth-child(2) table > tr').each(function(){
+			if($(this).children('td').hasClass('TitulosVerde')){
+				concepto = removeDiacritics($(this).text().trim().toLowerCase().replace(/ /g,'_'));
+				curriculum[concepto] = [];
+			}else{
+				if(concepto){
+					curriculum[concepto].push({
+						posicion : $(this).children('td').eq(0).text().trim(),
+						organizacion : $(this).children('td').eq(1).text().trim(),
+						fecha : $(this).children('td').eq(2).text().trim(),
+					});
+
+				}else{
+					//error TODO
+					console.log('erroor');
+				}
+			};
+		});
+		diputado.curriculum = curriculum;
+		//console.log(curriculum);
+		res.json(curriculum);
+		
+		//process.exit(0);
+		//return callback;
+
+
+
 		diputado.save(callback);
 	});
 }
