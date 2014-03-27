@@ -26,7 +26,8 @@
     "cheerio": "^0.13.1",
     "request": "^2.34.0",
     "iconv-lite": "^0.2.11",
-    "diacritics": "^1.1.0"
+    "diacritics": "^1.1.0",
+    "async": "^0.2.10"
   },
   "scripts": {
     "start": "node app.js",
