@@ -10,7 +10,7 @@ module.exports = {
 	attributes: {
  		comisiones:{
             collection: 'comision',
-            via: 'tipo'
+            via: 'tipo',
         }
 	}
 

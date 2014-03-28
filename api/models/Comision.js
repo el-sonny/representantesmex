@@ -14,7 +14,8 @@ module.exports = {
 			dominant : true
 		},
 		tipo:{
-            model:'tipo_de_comision'
+            model:'tipo_de_comision',
+            dominant: true,
         }
 	},
 
