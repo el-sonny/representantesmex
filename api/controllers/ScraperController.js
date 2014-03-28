@@ -81,8 +81,29 @@ module.exports = {
 			});
 		});
 	},
-	
+	sesiones: function(req,res){
+		Periodo.find({},function(e,periodos){
+			if(e) throw (e);
+			scrapeSesiones(periodo[0]);
+			
+			/*async.mapSeries(periodos,scrapeSesiones,function(e,r){
+				if(e) throw(e);
+				res.json(r);
+			});*/
+		});
+	}
 };
+function scrapeSesiones(periodo,callback){
+	request.get({
+		uri : 'http://sitl.diputados.gob.mx/LXII_leg/asistencias_diputados_calendarionplxii.php?pert='+periodo.id,
+		encoding : null, 
+	},function(err, resp, body){
+		if(err) console.log(err);
+		body = iconv.decode(body, 'iso-8859-1');			
+		$ = cheerio.load(body);
+		res.json($.html());
+	});
+}
 function requires(){
 	cheerio = require('cheerio');
 	request = require('request');
