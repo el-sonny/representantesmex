@@ -1,5 +1,5 @@
 /**
- * Sesion
+ * Asistencia
  *
  * @module      :: Model
  * @description :: A short summary of how this model works and what it represents.
@@ -7,15 +7,12 @@
  */
 
 module.exports = {
-  attributes: {    
-	periodo:{
-		model:'periodo',
-		dominant: true,
-	},
-	asistencias:{
-        collection: 'asistencia',
-        via: 'sesion',
-        dominant: true,
-    },
-  }
+	attributes: {     
+		sesion:{
+			model:'sesion',
+		},
+		diputado:{
+			model:'diputado',
+		}
+	}
 };

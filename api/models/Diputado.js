@@ -6,14 +6,15 @@
  */
 
 module.exports = {
-
 	attributes: {
 		comisiones: {
 			collection: 'comision',
 			via: 'diputados',
+		},
+		asistencias: {
+			collection: 'asistencia',
+			via: 'diputado',
+			dominant: true
 		}
 	},
-	
-	
-
 };

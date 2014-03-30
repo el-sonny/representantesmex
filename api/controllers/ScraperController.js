@@ -34,7 +34,7 @@ module.exports = {
 		Diputado.findOne(req.param('id')).exec(function(e,d){
 			if(e) throw e;
 			scrapeSingleDiputado(d,function(e,d){
-				//if(e) console.log(e);
+				if(e) console.log(e);
 				res.json(d);
 			});
 		});
@@ -48,13 +48,14 @@ module.exports = {
 			res.json(c);
 		});
 	},
-	//Escrapea las listas de todas las comisiones
+	//Escrapea las listas de todas las comisiones tarda tambien son 211 comisiones entonces 211 request uno por uno
 	comisiones: function(req,res){
 		requires();
 		Comision.find({},function(e,comisiones){
 			if(e) throw(e);
 			async.mapSeries(comisiones,scrapeComision,function(e,c){
 				if(e) throw(e);
+				console.log('done');
 				res.json(c);
 			});
 		});
@@ -75,24 +76,55 @@ module.exports = {
 					nombre : $(this).text().trim()
 				});
 			});
-			Periodos.create(periodos,function(e,p){
+			Periodo.create(periodos,function(e,p){
 				if(e) throw(e);
 				res.json(p);
 			});
 		});
 	},
+	//Nota la sesion 1 no la escrapea porque no sale en el calendario del periodo 1 tssss :S
 	sesiones: function(req,res){
+		requires();	
 		Periodo.find({},function(e,periodos){
 			if(e) throw (e);
-			scrapeSesiones(periodo[0]);
-			
-			/*async.mapSeries(periodos,scrapeSesiones,function(e,r){
+			async.mapSeries(periodos,scrapeSesiones,function(e,sesiones){
 				if(e) throw(e);
-				res.json(r);
-			});*/
+				res.json(sesiones);
+			});
+		});
+	},
+	asistencias: function(req,res){
+		requires();
+		Sesion.find({},function(e,sesiones){
+			if(e) throw(e);
+			async.mapSeries(sesiones,scrapeAsistencias,function(e,asistencias){
+				if(e) throw(e);
+				res.json(asistencias);
+			});
 		});
 	}
 };
+function scrapeAsistencias(sesion,callback){
+	request.get({
+		uri : 'http://sitl.diputados.gob.mx/LXII_leg/listados_asistenciasnplxii.php?partidot=1&sesiont='+sesion.id,
+		encoding : null, 
+	},function(err, resp, body){
+		if(err) console.log(err);
+		body = iconv.decode(body, 'iso-8859-1');			
+		$ = cheerio.load(body);
+		var asistencias = [];
+		$("a[href*='asistencias_por_pernplxii.php?iddipt=']").each(function(){
+			asistencias.push({
+				diputado : $(this).attr('href').replace('asistencias_por_pernplxii.php?iddipt=','').replace('&pert=',',').split(',')[0],
+				valor : $(this).parent().parent().next().children().text().trim(),
+				sesion : sesion.id,
+			});
+		});
+		procesados++
+		console.log('asistencias de '+procesados+' sesiones procesadas');
+		async.map(asistencias,Asistencia.create,callback);
+	});
+}
 function scrapeSesiones(periodo,callback){
 	request.get({
 		uri : 'http://sitl.diputados.gob.mx/LXII_leg/asistencias_diputados_calendarionplxii.php?pert='+periodo.id,
@@ -101,7 +133,40 @@ function scrapeSesiones(periodo,callback){
 		if(err) console.log(err);
 		body = iconv.decode(body, 'iso-8859-1');			
 		$ = cheerio.load(body);
-		res.json($.html());
+		var sesiones = [];
+		var meses = {
+			'Enero' : 1,
+			'Febrero' : 2,
+			'Marzo' : 3,
+			'Abril' : 4,
+			'Mayo' : 5,
+			'Junio' : 6,
+			'Julio' : 7,
+			'Agosto' : 8,
+			'Septiembre' : 9,
+			'Octubre' : 10,
+			'Noviembre' : 11,
+			'Diciembre' : 12
+		};
+		$("a[href*='asisteinifinsesionnplxii.php?sesiont=']").each(function(){
+			var string = $(this).parent().parent().parent().parent().parent().children('tr:nth-child(1)').children().children().text().trim().split(" ");
+			var dia = $(this).text().trim();
+			var mes = meses[string[0]];
+			var anio = string[1];
+			var turno = null;
+			if(dia == 'M' || dia == 'V'){
+				dia = parseInt($(this).parent().parent().parent().prev().children().children().children().text().trim())+1;
+				turno = $(this).text().trim();
+			}
+			var sesion = {
+				id : $(this).attr('href').replace('asisteinifinsesionnplxii.php?sesiont=','').trim(),
+				fecha : anio+'-'+mes+'-'+dia,
+				periodo : periodo.id
+			}
+			if(turno) sesion.turno = turno;
+			sesiones.push(sesion);
+		});
+		async.map(sesiones,Sesion.create,callback);
 	});
 }
 function requires(){

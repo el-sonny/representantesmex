@@ -9,10 +9,10 @@
 module.exports = {
 
   attributes: {
-  	
-  	/* e.g.
-  	nickname: 'string'
-  	*/
+	sesiones:{
+        collection: 'sesion',
+        via: 'periodo',
+    }
     
   }
 
