@@ -6,7 +6,7 @@
  */
 
 module.exports = {
- 
+
 	attributes: {
 		votacion:{
 			model:'votacion',
