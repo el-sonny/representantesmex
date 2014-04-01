@@ -1,0 +1,87 @@
+<div class="container-fluid profile">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="profile-head panel">
+        <div class='pic img-circle'><img class="img-circle" src="<%-diputado.imagen%>" alt="<%-diputado.nombre%>"></div>
+        <div class="name"><small><%=diputado.nombre%></small></div>
+        <!-- <a href="#" class="btn btn-xs btn-primary pull-right" style="margin:10px;"><span class="glyphicon glyphicon-picture"></span> Change cover</a> -->
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    
+    <div class="col-md-5">
+      <div class="panel panel-primary">
+        <div class="panel-heading">
+          <h3 class="panel-title">Información General</h3>
+        </div>
+        <div class="panel-body">
+          <dl class="dl-horizontal">
+            <dt>Estado</dt><dd><%=diputado.entidad%></dd>
+            <dt>Curul</dt><dd><%=diputado.curul%></dd>
+            <dt>Email</dt><dd><%=diputado.email%></dd>
+            <dt>Ubicación</dt><dd><%=diputado.ubicacion%></dd>
+            <dt>Extensión</dt><dd><%=diputado.extension%></dd>
+            <dt>Suplente</dt><dd><%=diputado.suplente%></dd>
+            <dt>Tipo de elección</dt><dd><%=diputado.tipo_de_eleccion%></dd>
+            <dt>Max. grado académico</dt><dd><%= diputado.max_grado() %></dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="panel panel-primary">
+        <div class="panel-heading">
+          <h3 class="panel-title">Asistencias</h3>
+        </div>
+        <div class="panel-body">
+          <div class="progress">
+            <%
+            var r = diputado.resumen_de_asistencias;
+            var inasistencias = r.PM + r.IJ + r.I + r.IV;
+            var cedula_comision = r.AC + r.AO;
+            %>
+            <div class="progress-bar progress-bar-success" style="width: <%- r.A / r.total * 100 %>%"></div>
+            <div class="progress-bar progress-bar-warning" style="width: <%- cedula_comision / r.total * 100 %>%"></div>
+            <div class="progress-bar progress-bar-danger" style="width: <%- inasistencias / r.total * 100 %>%"></div>
+          </div>
+          <ul class="list-group asistencias-profile dl-horizontal">
+            <li class="list-group-item asistencia"><strong>Asistencias :</strong> <%= r.A %></li>
+            <li class="list-group-item fishy"><strong>Asistencias por cédula:</strong> <%= r.AC %></li>
+            <li class="list-group-item fishy"><strong>Asistencias por Comisión Oficial :</strong> <%= r.AO %></li>
+            <li class="list-group-item inasistencia"><strong>Permiso de mesa directiva:</strong> <%= r.PM %></li>
+            <li class="list-group-item inasistencia"><strong>Inasistencias justificadas:</strong> <%= r.IJ %></li>
+            <li class="list-group-item inasistencia"><strong>Inasistencias:</strong> <%= r.I %></li>
+            <li class="list-group-item inasistencia"><strong>Inasistencia por votaciones:</strong> <%= r.IV %></li>
+          </ul>
+      </div>
+    </div>
+  </div>
+
+    <div class="col-md-3">
+      <div class="panel panel-primary">
+        <div class="panel-heading">
+          <h3 class="panel-title">Votaciones</h3>
+        </div>
+        <div class="panel-body">
+          <div class="progress">
+            <%
+            var r = diputado.resumen_de_votaciones;
+            var total = r['A favor']+r['En contra']+r['Ausente'];
+            %>
+            <div class="progress-bar progress-bar-success" style="width: <%- r['A favor'] / total * 100 %>%"></div>
+            <div class="progress-bar progress-bar-warning" style="width: <%- r['En contra'] / total * 100 %>%"></div>
+            <div class="progress-bar progress-bar-danger" style="width: <%- r['Ausente'] / total * 100 %>%"></div>
+          </div>
+          <ul class="list-group asistencias-profile dl-horizontal">
+            <li class="list-group-item asistencia"><strong>A favor :</strong> <%= r['A favor'] %></li>
+            <li class="list-group-item fishy"><strong>En Contra:</strong> <%= r['En contra'] %></li>
+            <li class="list-group-item inasistencia"><strong>Ausente:</strong> <%= r['Ausente'] %></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

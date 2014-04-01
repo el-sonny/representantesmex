@@ -29,6 +29,18 @@ module.exports.routes = {
   '/': {
     view: 'homepage'
   },
+  '/diputado/:id': {
+    controller: 'diputado',
+    action: 'profile'
+  },
+  '/api/diputado/:id' : {
+    controller: 'diputado',
+    action : 'find'
+  },
+  '/api/periodo' : {
+    controller: 'periodo',
+    action : 'find'
+  }
 
 
   // Custom routes here...

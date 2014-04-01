@@ -63,20 +63,20 @@ module.exports = {
 	periodos: function(req,res){
 		requires();
 		request.get({
-			uri : 'http://sitl.diputados.gob.mx/LXII_leg/asistencias_diputados_todosnplxii.php',
+			uri : 'http://sitl.diputados.gob.mx/LXII_leg/votaciones_por_periodonplxii.php',
 			encoding: null
 		},function(err, resp, body){
 			if (err) throw err;
 			body = iconv.decode(body, 'iso-8859-1');
 			var $ = cheerio.load(body);
 			var periodos = [];
-			$("a[href*='asistencias_diputados_calendarionplxii.php']").each(function(){
+			$("a[href*='votacionesxperiodonplxii.php?pert=']").each(function(){
 				periodos.push({
-					id: $(this).attr('href').replace('asistencias_diputados_calendarionplxii.php?pert=','').trim(),
+					id: $(this).attr('href').replace('votacionesxperiodonplxii.php?pert=','').trim(),
 					nombre : $(this).text().trim()
 				});
 			});
-			Periodo.create(periodos,function(e,p){
+			Periodo.findOrCreate(periodos,periodos,function(e,p){
 				if(e) throw(e);
 				res.json(p);
 			});
@@ -93,17 +93,150 @@ module.exports = {
 			});
 		});
 	},
+
 	asistencias: function(req,res){
 		requires();
-		Sesion.find({},function(e,sesiones){
+		//Por sesion y partido, reemplazando para hacerlo por diputado
+		/*Sesion.find({},function(e,sesiones){
 			if(e) throw(e);
 			async.mapSeries(sesiones,scrapeAsistencias,function(e,asistencias){
 				if(e) throw(e);
 				res.json(asistencias);
 			});
+		});*/
+		Diputado.findOne(req.param('id'),function(e,diputado){
+			if(e) throw(e);
+			Periodo.find({},function(e,periodos){
+				if(e) throw(e);
+				async.mapSeries(
+					periodos,
+					function(periodo,cb){
+						asistenciasPorDiputado(diputado,periodo,cb);
+					},
+				function(e,asistencias){
+					if(e) throw(e);
+					res.json(asistencias);
+				});
+			});
+		});
+	},
+	votaciones : function(req,res){
+		requires();
+		Diputado.findOne(req.param('id'),function(e,diputado){
+			if(e) throw(e);
+			Periodo.find({},function(e,periodos){
+				if(e) throw(e);
+				async.mapSeries(
+					periodos,
+					function(periodo,cb){
+						votacionesPorDiputado(diputado,periodo,cb);
+					},
+				function(e,votaciones){
+					if(e) throw(e);
+					res.json(votaciones);
+				});
+			});
 		});
 	}
 };
+function votacionesPorDiputado(diputado,periodo,callback){
+	var meses = {'Enero' : 1,'Febrero' : 2,'Marzo' : 3,'Abril' : 4,'Mayo' : 5,'Junio' : 6,'Julio' : 7,'Agosto' : 8,'Septiembre' : 9,'Octubre' : 10,'Noviembre' : 11,'Diciembre' : 12};
+	request.get({
+		uri : 'http://sitl.diputados.gob.mx/LXII_leg/votaciones_por_pernplxii.php?iddipt='+diputado.id+'&pert='+periodo.id,
+		encoding : null, 
+	},function(err, resp, body){
+		if(err) return callback(err,null);
+		body = iconv.decode(body, 'iso-8859-1');			
+		$ = cheerio.load(body);
+		var votaciones = [];
+		var sentidos = [];
+		var fecha = ''; 
+		var resumen = diputado.resumen_de_votaciones ? diputado.resumen_de_votaciones : {"A favor": 0,"En contra": 0,"Ausente": 0};
+		$("tr[bgcolor='#5C7778']").nextUntil($('tr:last-child')).each(function(){
+			if($(this).children().length == 1){
+				fecha = $(this).text().trim().split(' ');
+				fecha = [fecha[2],meses[fecha[1]],fecha[0]].join('-');
+			}else if($(this).children().length == 4){				
+				var sentido = $(this).children('td:nth-child(4)').text();
+				sentidos.push(sentido);
+				resumen[sentido]++;
+				votaciones.push({
+					fecha : fecha,
+					orden : $(this).children('td:nth-child(1)').text().trim(),
+					titulo : $(this).children('td:nth-child(2)').text().trim(),
+				});
+			};			
+		});
+		async.map(votaciones,function(v,c){Votacion.findOrCreate(v,v,c)},function(e,votaciones){
+			var votaciones_diputado = [];
+			var i = 0;
+			votaciones.forEach(function(votacion){
+				votaciones_diputado.push({
+					votacion : votacion.id,
+					diputado : diputado.id,
+					sentido : sentidos[i++]
+				});
+			});
+			async.map(votaciones_diputado,function(v,c){Diputado_votacion.findOrCreate(v,v,c)},function(e,v){
+				diputado.resumen_de_votaciones = resumen;
+				diputado.save(callback);
+			});
+		});	
+
+	});
+
+}
+function asistenciasPorDiputado(diputado,periodo,callback){
+	var meses = {'Enero' : 1,'Febrero' : 2,'Marzo' : 3,'Abril' : 4,'Mayo' : 5,'Junio' : 6,'Julio' : 7,'Agosto' : 8,'Septiembre' : 9,'Octubre' : 10,'Noviembre' : 11,'Diciembre' : 12};
+	request.get({
+		uri : 'http://sitl.diputados.gob.mx/LXII_leg/asistencias_por_pernplxii.php?iddipt='+diputado.id+'&pert='+periodo.id,
+		encoding : null, 
+	},function(err, resp, body){
+		if(err) return callback(err,null);
+		body = iconv.decode(body, 'iso-8859-1');			
+		$ = cheerio.load(body);
+		var fechas = [];
+		var valores = [];
+		var asistencias = [];
+		var resumen = diputado.resumen_de_asistencias ? diputado.resumen_de_asistencias : {"A": 0,"AC": 0,"AO": 0,"PM": 0,"IJ": 0,"I": 0,"IV": 0,"total": 0};
+		$("td[bgcolor*='D6E2E2']").each(function(){
+			var dia_valor = $(this).children().children().html().split('<br>');
+			var mes_anio = $(this).parent().parent().children('tr:first-child').children().children().text().trim().split(' ');
+			var fecha = [mes_anio[1],meses[mes_anio[0]],dia_valor[0]].join('-');
+			var multi = dia_valor[1].match(/(.+)\/(.+)/);
+			if(multi){
+				valores.push(multi[1],multi[2]);
+				resumen[multi[1]] = resumen[multi[1]] ? resumen[multi[1]]+1 : 1;
+				resumen[multi[2]] = resumen[multi[2]] ? resumen[multi[2]]+1 : 1;
+				resumen['total'] = resumen['total'] ? resumen['total']+2 : 1;
+
+
+			}else{
+				valores.push(dia_valor[1]);
+				resumen[dia_valor[1]] = resumen[dia_valor[1]] ? resumen[dia_valor[1]]+1 : 1;
+				resumen['total'] = resumen['total'] ? resumen['total']+1 : 1;
+			}
+			fechas.push(fecha);
+		});
+		var i = 0;
+		Sesion.find({fecha:fechas},function(e,sesiones){
+			if(e) return callback(e,null);
+			sesiones.forEach(function(sesion,index){
+				asistencias.push({
+					sesion:sesion.id,
+					diputado:diputado.id,
+					valor : valores[i++],
+				});
+			});
+			async.map(asistencias,function(a,c){Asistencia.findOrCreate(a,a,c)},function(e,asistencias){
+				Diputado.find(diputado.id,function(e,d){
+					diputado.resumen_de_asistencias = resumen;
+					diputado.save(callback);
+				});
+			});
+		});		
+	});
+}
 function scrapeAsistencias(sesion,callback){
 	request.get({
 		uri : 'http://sitl.diputados.gob.mx/LXII_leg/listados_asistenciasnplxii.php?partidot=1&sesiont='+sesion.id,
@@ -313,6 +446,7 @@ function scrapeDiputadoGeneral(diputado,callback){
 		console.log('suplente error:'+diputado.id);
 	}
 
+	diputado.imagen = $("img[src*='./fotos_lxiiconfondo/']").attr('src').replace('./','http://sitl.diputados.gob.mx/LXII_leg/');
 	diputado[dchelper[1].toLowerCase()] = dchelper[2];
 	diputado.email = email ? email[0] : false;
 	diputado.curul = bodySummary.match( /Curul: (.*?) (Suplente( de)?|Onomástico):/i)[1];
