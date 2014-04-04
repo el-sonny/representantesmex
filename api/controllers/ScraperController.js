@@ -76,7 +76,7 @@ module.exports = {
 					nombre : $(this).text().trim()
 				});
 			});
-			Periodo.findOrCreate(periodos,periodos,function(e,p){
+			async.mapSeries(periodos,function(p,c){Periodo.findOrCreate(p,p,c)},function(e,p){
 				if(e) throw(e);
 				res.json(p);
 			});
